@@ -22,23 +22,25 @@ class Node
 
 
 
-class FileSpec
-	constructor: (@nodeName, @evaluated) ->
+class EvaluatedNodeData
+	constructor: (@nodeName, @data) ->
+
+	hasData: () -> @data.src.length and @data.dest.length
 
 	generateConfig: () ->
-		if @evaluated.src.length and @evaluated.dest.length
+		if @hasData()
 			embed = (hash, ks, data) ->
 				if ks[1] then (embed (hash[ks[0]] = {}), ks[1..], data) else hash[ks[0]] = data
 				hash
 
-			data =
+			config =
 				files:
-					if @evaluated.dest.length is 1
-						[ {src: (file.path for file in @evaluated.src), dest: @evaluated.dest[0].path} ]
+					if @data.dest.length is 1
+						[ {src: (file.path for file in @data.src), dest: @data.dest[0].path} ]
 					else
-						{src: src.path, dest: dest.path} for [src, dest] in _.zip @evaluated.src, @evaluated.dest
+						{src: src.path, dest: dest.path} for [src, dest] in _.zip @data.src, @data.dest
 
-			embed {}, (@nodeName.split ':'), data
+			embed {}, (@nodeName.split ':'), config
 
 
 
@@ -75,7 +77,7 @@ class Reader extends Node
 	getOutput: () -> @input
 
 	evaluate: (inputNode, outputNode) ->
-		@evaluation = [ new FileSpec @name, {src: [], dest: (file for file in @input)} ]
+		@evaluation = [ new EvaluatedNodeData @name, {src: [], dest: (file for file in @input)} ]
 
 
 
@@ -102,7 +104,7 @@ class Task extends Node
 	evaluate: (inputNode, outputNode) ->
 		input = inputNode.getOutput()
 		@output = if outputNode.constructor is Writer then outputNode.getFinalOutput input else @getTemporaryFiles input
-		@evaluation = if input and @output then [ new FileSpec @name, {src: input, dest: @output} ] else []
+		@evaluation = if input and @output then [ new EvaluatedNodeData @name, {src: input, dest: @output} ] else []
 
 	getOutput: () ->
 		@output
