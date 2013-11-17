@@ -119,32 +119,34 @@ class FileSpec
 
 
 
+splatOrFlat = (splat) ->
+	if (splat.length is 1 and splat[0] instanceof Array) then splat[0] else splat
 
-run = (nodes) -> new Flow nodes
-read = (paths) -> new Reader paths
+chain = (nodes...) -> new Flow splatOrFlat nodes
+read = (paths...) -> new Reader splatOrFlat paths
 task = (name) -> new Task name
-write = (paths) -> new Writer paths
-merge = (flows) -> new Merger flows
+write = (paths...) -> new Writer splatOrFlat paths
+merge = (flows...) -> new Merger splatOrFlat flows
 
 
 
 COFFEE = ['assets/coffee/main.coffee', 'assets/coffee/cms.coffee']
 JS = ['jquery.js', 'another.js']
 
-dev = run [
+dev = chain [
 	(read COFFEE),
 	(task 'coffee:target'),
-	(write ['main.js', 'cms.js'])
+	(write 'main.js', 'cms.js')
 ]
 
-production = run [
+production = chain [
 	(merge [
-		(run [(read COFFEE), (task 'coffee')]),
-		(run [(read JS), (task 'test:target')])
+		(chain (read COFFEE), (task 'coffee')),
+		(chain (read JS), (task 'test:target')),
 	]),
 	(task 'jslint'),
 	(task 'uglify'),
-	(write ['test.js'])
+	(write 'test.js')
 ]
 
 for spec in production.evaluate()
