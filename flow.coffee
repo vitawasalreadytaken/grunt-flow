@@ -16,48 +16,29 @@ class TemporaryFile extends File
 
 
 class Node
-	name: null
 	evaluation: null
-	getOutput: () ->
+	getOutput: () -> []
 	evaluate: (inputNode, outputNode) -> []
 
 
-class Reader extends Node
-	constructor: (paths) ->
-		@input = ((new File path) for path in paths)
 
-	getOutput: () -> @input
+class FileSpec
+	constructor: (@nodeName, @evaluated) ->
 
-	evaluate: (inputNode, outputNode) ->
-		@evaluation = [ new FileSpec @name, {src: [], dest: (file for file in @input)} ]
+	generateConfig: () ->
+		if @evaluated.src.length and @evaluated.dest.length
+			embed = (hash, ks, data) ->
+				if ks[1] then (embed (hash[ks[0]] = {}), ks[1..], data) else hash[ks[0]] = data
+				hash
 
+			data =
+				files:
+					if @evaluated.dest.length is 1
+						[ {src: (file.path for file in @evaluated.src), dest: @evaluated.dest[0].path} ]
+					else
+						{src: src.path, dest: dest.path} for [src, dest] in _.zip @evaluated.src, @evaluated.dest
 
-class Writer extends Node
-	constructor: (@outputPaths) ->
-
-	getFinalOutput: (input) ->
-		if @outputPaths.length not in [1, input.length]
-			throw "Writer input has #{input.length} nodes but is configured to output #{@outputPaths.length}."
-
-		if @outputPaths.length is 1
-			[ new MergedFile @outputPaths[0], input ]
-		else
-			(new File output, input) for [output, input] in _.zip @outputPaths, input
-
-
-class Task extends Node
-	constructor: (@name) ->
-
-	getTemporaryFiles: (inputFiles) ->
-		(new TemporaryFile input.path + '.tmp', input) for input in inputFiles
-
-	evaluate: (inputNode, outputNode) ->
-		input = inputNode.getOutput()
-		@output = if outputNode.constructor is Writer then outputNode.getFinalOutput input else @getTemporaryFiles input
-		@evaluation = if input and @output then [ new FileSpec @name, {src: input, dest: @output} ] else []
-
-	getOutput: () ->
-		@output
+			embed {}, (@nodeName.split ':'), data
 
 
 
@@ -87,28 +68,58 @@ class Chain extends Node
 
 
 
-class FileSpec
-	constructor: (@nodeName, @evaluated) ->
+class Reader extends Node
+	constructor: (paths) ->
+		@input = ((new File path) for path in paths)
 
-	generateConfig: () ->
-		if @evaluated.src.length and @evaluated.dest.length
-			embed = (hash, ks, data) ->
-				if ks[1] then (embed (hash[ks[0]] = {}), ks[1..], data) else hash[ks[0]] = data
-				hash
+	getOutput: () -> @input
 
-			data =
-				files:
-					if @evaluated.dest.length is 1
-						[ {src: (file.path for file in @evaluated.src), dest: @evaluated.dest[0].path} ]
-					else
-						{src: src.path, dest: dest.path} for [src, dest] in _.zip @evaluated.src, @evaluated.dest
-
-			embed {}, (@nodeName.split ':'), data
+	evaluate: (inputNode, outputNode) ->
+		@evaluation = [ new FileSpec @name, {src: [], dest: (file for file in @input)} ]
 
 
 
-splatOrFlat = (splat) ->
-	if (splat.length is 1 and splat[0] instanceof Array) then splat[0] else splat
+class Writer extends Node
+	constructor: (@outputPaths) ->
+
+	getFinalOutput: (input) ->
+		if @outputPaths.length not in [1, input.length]
+			throw "Writer input has #{input.length} nodes but is configured to output #{@outputPaths.length}."
+
+		if @outputPaths.length is 1
+			[ new MergedFile @outputPaths[0], input ]
+		else
+			(new File output, input) for [output, input] in _.zip @outputPaths, input
+
+
+
+class Task extends Node
+	constructor: (@name) ->
+
+	getTemporaryFiles: (inputFiles) ->
+		(new TemporaryFile input.path + '.tmp', input) for input in inputFiles
+
+	evaluate: (inputNode, outputNode) ->
+		input = inputNode.getOutput()
+		@output = if outputNode.constructor is Writer then outputNode.getFinalOutput input else @getTemporaryFiles input
+		@evaluation = if input and @output then [ new FileSpec @name, {src: input, dest: @output} ] else []
+
+	getOutput: () ->
+		@output
+
+
+
+# Helper function that lets us call a function with either an array of arguments or a variable number of arguments.
+splatOrFlat = (splat) -> if (splat.length is 1 and splat[0] instanceof Array) then splat[0] else splat
+
+
+
+
+
+
+###
+Shortcuts
+###
 
 chain = (nodes...) -> new Chain splatOrFlat nodes
 read = (paths...) -> new Reader splatOrFlat paths
@@ -117,6 +128,13 @@ write = (paths...) -> new Writer splatOrFlat paths
 merge = (flows...) -> new Merger splatOrFlat flows
 
 
+
+
+
+
+###
+Proof of concept tests
+###
 
 COFFEE = ['assets/coffee/main.coffee', 'assets/coffee/cms.coffee']
 JS = ['jquery.js', 'another.js']
