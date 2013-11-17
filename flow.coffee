@@ -120,45 +120,25 @@ splatOrFlat = (splat) -> if (splat.length is 1 and splat[0] instanceof Array) th
 
 
 ###
-Shortcuts
+Exports: shortcuts and config merger
 ###
 
-chain = (nodes...) -> new Chain splatOrFlat nodes
-read = (paths...) -> new Reader splatOrFlat paths
-task = (name) -> new Task name
-write = (paths...) -> new Writer splatOrFlat paths
-merge = (flows...) -> new Merger splatOrFlat flows
+module.exports =
+	chain: (nodes...) -> new Chain splatOrFlat nodes
+	read: (paths...) -> new Reader splatOrFlat paths
+	task: (name) -> new Task name
+	write: (paths...) -> new Writer splatOrFlat paths
+	merge: (flows...) -> new Merger splatOrFlat flows
 
+	addPaths: (nodes, config) ->
+		merged = {}
+		concat = (a, b) -> if _.isArray a then a.concat b else undefined
 
+		for node in nodes
+			nodeData = node.evaluate()
+			for d in nodeData
+				part = d.generateConfig()
+				if part
+					merged = _.merge merged, part, concat
 
-
-
-
-###
-Proof of concept tests
-###
-
-COFFEE = ['assets/coffee/main.coffee', 'assets/coffee/cms.coffee']
-JS = ['jquery.js', 'another.js']
-
-dev = chain [
-	(read COFFEE),
-	(task 'coffee:target'),
-	(write 'main.js', 'cms.js')
-]
-
-production = chain [
-	(merge [
-		(chain (read COFFEE), (task 'coffee')),
-		(chain (read JS), (task 'test:target')),
-	]),
-	(task 'jslint'),
-	(task 'uglify'),
-	(write 'test.js')
-]
-
-
-for spec in production.evaluate()
-	config = spec.generateConfig()
-	if config
-		console.log JSON.stringify config, null, 2
+		merged = _.merge merged, config, concat
