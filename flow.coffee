@@ -1,6 +1,6 @@
 _ = require 'underscore'
-c = console.log
-s = (o) -> JSON.stringify o, null, 4
+
+
 
 class File
 	constructor: (@path, @original = null) ->
@@ -38,7 +38,7 @@ class Writer extends Node
 
 	getFinalOutput: (input) ->
 		if @outputPaths.length not in [1, input.length]
-			throw "Writer input has #{input.length} nodes but Writer is configured to output #{@outputPaths.length} nodes."
+			throw "Writer input has #{input.length} nodes but is configured to output #{@outputPaths.length}."
 
 		if @outputPaths.length is 1
 			[ new MergedFile @outputPaths[0], input ]
@@ -56,8 +56,6 @@ class Task extends Node
 		input = inputNode.getOutput()
 		@output = if outputNode.constructor is Writer then outputNode.getFinalOutput input else @getTemporaryFiles input
 		@evaluation = if input and @output then [ new FileSpec @name, {src: input, dest: @output} ] else []
-		#c "task #{@name} ev", s r
-		@evaluation
 
 	getOutput: () ->
 		@output
@@ -74,8 +72,6 @@ class Merger extends Node
 		@evaluation
 
 	getOutput: () ->
-		#for node in @nodes
-		#	c 'merger node out', node.name, node.getOutput()
 		_.flatten (node.getOutput() for node in @nodes), true
 
 
@@ -84,16 +80,10 @@ class Flow extends Node
 	constructor: (@nodes) -> @name = 'flow'
 
 	evaluate: (inputNode, outputNode) ->
-		#zip = (xs...) ->
-		#	for i in [0...Math.min.apply(null, x.length for x in xs)]
-		#		(x[i] for x in xs)
-
 		partitions = _.zip ([inputNode].concat _.initial @nodes), @nodes, (_.tail(@nodes).concat [outputNode])
-		#c 'flow', @nodes, inputNode, outputNode, s partitions
 		@evaluation = _.flatten (node.evaluate prev, next for [prev, node, next] in partitions), true
 
 	getOutput: () ->
-		#c 'flow output node', @nodes[1]
 		(_.last @nodes).getOutput()
 
 
@@ -112,7 +102,6 @@ class FileSpec
 					if @evaluated.dest.length is 1
 						[ {src: (file.path for file in @evaluated.src), dest: @evaluated.dest[0].path} ]
 					else
-						#c 'FS', @evaluated
 						{src: src.path, dest: dest.path} for [src, dest] in _.zip @evaluated.src, @evaluated.dest
 
 			embed {}, (@nodeName.split ':'), data
@@ -148,6 +137,7 @@ production = chain [
 	(task 'uglify'),
 	(write 'test.js')
 ]
+
 
 for spec in production.evaluate()
 	config = spec.generateConfig()
