@@ -76,7 +76,7 @@ class Merger extends Node
 
 
 
-class Flow extends Node
+class Chain extends Node
 	constructor: (@nodes) -> @name = 'flow'
 
 	evaluate: (inputNode, outputNode) ->
@@ -111,7 +111,7 @@ class FileSpec
 splatOrFlat = (splat) ->
 	if (splat.length is 1 and splat[0] instanceof Array) then splat[0] else splat
 
-chain = (nodes...) -> new Flow splatOrFlat nodes
+chain = (nodes...) -> new Chain splatOrFlat nodes
 read = (paths...) -> new Reader splatOrFlat paths
 task = (name) -> new Task name
 write = (paths...) -> new Writer splatOrFlat paths
