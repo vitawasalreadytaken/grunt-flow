@@ -24,7 +24,6 @@ class Node
 
 class Reader extends Node
 	constructor: (paths) ->
-		@name = 'reader'
 		@input = ((new File path) for path in paths)
 
 	getOutput: () -> @input
@@ -34,7 +33,7 @@ class Reader extends Node
 
 
 class Writer extends Node
-	constructor: (@outputPaths) -> @name = 'writer'
+	constructor: (@outputPaths) ->
 
 	getFinalOutput: (input) ->
 		if @outputPaths.length not in [1, input.length]
@@ -63,7 +62,7 @@ class Task extends Node
 
 
 class Merger extends Node
-	constructor: (@nodes) -> @name = 'merger'
+	constructor: (@nodes) ->
 
 	evaluate: (inputNode, outputNode) ->
 		@evaluation = []
@@ -77,7 +76,7 @@ class Merger extends Node
 
 
 class Chain extends Node
-	constructor: (@nodes) -> @name = 'flow'
+	constructor: (@nodes) ->
 
 	evaluate: (inputNode, outputNode) ->
 		partitions = _.zip ([inputNode].concat _.initial @nodes), @nodes, (_.tail(@nodes).concat [outputNode])
